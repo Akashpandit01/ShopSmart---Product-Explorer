@@ -1,48 +1,53 @@
-import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  removeFromCart,
-  increaseQty,
+  selectCartItemsArray,
+  selectTotals,
+  addToCart,
   decreaseQty,
+  removeFromCart,
   clearCart,
-} from "./cart/cartSlice";
+} from "../cart/cartSlice";
+import { formatCurrency } from "../utils/currency";
 
 export default function Cart() {
-  const { items } = useSelector((state) => state.cart);
   const dispatch = useDispatch();
+  const items = useSelector(selectCartItemsArray);
+  const { totalItems, totalPrice } = useSelector(selectTotals);
 
-  const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  if (items.length === 0)
+    return (
+      <div className="container">
+        <h2>Your cart is empty</h2>
+      </div>
+    );
 
   return (
-    <div>
+    <div className="container">
       <h2>Your Cart</h2>
-      {items.length === 0 && <p>Cart is empty</p>}
-      {items.map((item) => (
-        <div key={item.id} style={{ borderBottom: "1px solid #ccc" }}>
-          <h4>{item.title}</h4>
-          <p>${item.price}</p>
-          <div>
-            <button onClick={() => dispatch(decreaseQty(item.id))}>-</button>
-            {item.quantity}
-            <button onClick={() => dispatch(increaseQty(item.id))}>+</button>
-            <button
-              onClick={() => {
-                if (window.confirm("Remove this item?")) {
-                  dispatch(removeFromCart(item.id));
-                }
-              }}
-            >
-              Remove
-            </button>
+      {items.map(({ product, qty }) => (
+        <div key={product.id} className="cart-item">
+          <img src={product.image} alt={product.title} />
+          <div className="info">
+            <h4>{product.title}</h4>
+            <p>{formatCurrency(product.price)}</p>
           </div>
+          <div className="qty">
+            <button onClick={() => dispatch(decreaseQty(product.id))}>-</button>
+            <span>{qty}</span>
+            <button onClick={() => dispatch(addToCart(product))}>+</button>
+          </div>
+          <div className="line-total">
+            {formatCurrency(product.price * qty)}
+          </div>
+          <button onClick={() => dispatch(removeFromCart(product.id))}>
+            Remove
+          </button>
         </div>
       ))}
-      {items.length > 0 && (
-        <>
-          <h3>Total: ${total.toFixed(2)}</h3>
-          <button onClick={() => dispatch(clearCart())}>Clear Cart</button>
-        </>
-      )}
+      <hr />
+      <h3>Total Items: {totalItems}</h3>
+      <h3>Total Price: {formatCurrency(totalPrice)}</h3>
+      <button onClick={() => dispatch(clearCart())}>Clear Cart</button>
     </div>
   );
 }

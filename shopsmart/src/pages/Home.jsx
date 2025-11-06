@@ -1,34 +1,40 @@
-import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProducts } from "products/productSlice";
+import { fetchProducts, selectPaged, setPage } from "../products/productSlice";
+import { useEffect } from "react";
 import ProductCard from "../components/ProductCard";
 import Filters from "../components/Filters";
+import Loader from "../components/Loader";
 import Pagination from "../components/Pagination";
 
 export default function Home() {
   const dispatch = useDispatch();
-  const { filtered, status } = useSelector((state) => state.products);
-  const [page, setPage] = useState(1);
-  const perPage = 6;
+  const status = useSelector((s) => s.products.status);
+  const error = useSelector((s) => s.products.error);
+  const page = useSelector((s) => s.products.page);
+  const pageSize = useSelector((s) => s.products.pageSize);
+  const { items, total } = useSelector(selectPaged);
 
   useEffect(() => {
-    dispatch(fetchProducts());
-  }, [dispatch]);
+    if (status === "idle") dispatch(fetchProducts());
+  }, [status, dispatch]);
 
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
-  const totalPages = Math.ceil(filtered.length / perPage);
+  if (status === "loading") return <Loader />;
+  if (status === "failed") return <div>Error: {error}</div>;
 
   return (
-    <div>
-      <h1>ShopSmart</h1>
+    <div className="container">
       <Filters />
-      {status === "loading" && <p>Loading...</p>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-        {paginated.map((p) => (
+      <div className="grid">
+        {items.map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
-      <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+      <Pagination
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={(p) => dispatch(setPage(p))}
+      />
     </div>
   );
 }

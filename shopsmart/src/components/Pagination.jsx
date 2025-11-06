@@ -1,21 +1,27 @@
-import React from "react";
+export default function Pagination({ total, page, pageSize, onPageChange }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (totalPages <= 1) return null;
 
-export default function Pagination({ currentPage, totalPages, onPageChange }) {
-  const pages = [...Array(totalPages).keys()].map((n) => n + 1);
   return (
-    <div>
-      {pages.map((p) => (
+    <div className="pagination">
+      <button disabled={page === 1} onClick={() => onPageChange(page - 1)}>
+        Prev
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => (
         <button
-          key={p}
-          onClick={() => onPageChange(p)}
-          style={{
-            background: p === currentPage ? "gray" : "white",
-            margin: "2px",
-          }}
+          key={i}
+          className={page === i + 1 ? "active" : ""}
+          onClick={() => onPageChange(i + 1)}
         >
-          {p}
+          {i + 1}
         </button>
       ))}
+      <button
+        disabled={page === totalPages}
+        onClick={() => onPageChange(page + 1)}
+      >
+        Next
+      </button>
     </div>
   );
 }

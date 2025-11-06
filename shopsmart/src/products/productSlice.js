@@ -1,51 +1,46 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, createSelector } from "@reduxjs/toolkit";
+
+const API_URL = "https://fakestoreapi.com/products";
 
 export const fetchProducts = createAsyncThunk("products/fetch", async () => {
-  const res = await fetch("https://fakestoreapi.com/products");
+  const res = await fetch(API_URL);
   return res.json();
 });
 
+const initialState = {
+  items: [],
+  status: "idle",
+  error: null,
+  search: "",
+  category: "all",
+  priceRange: [0, 1000],
+  page: 1,
+  pageSize: 8,
+};
+
 const productSlice = createSlice({
   name: "products",
-  initialState: {
-    items: [],
-    filtered: [],
-    categories: [],
-    search: "",
-    category: "All",
-    minPrice: 0,
-    maxPrice: 1000,
-    status: "idle",
-  },
+  initialState,
   reducers: {
-    setSearch(state, action) {
+    setSearch: (state, action) => {
       state.search = action.payload;
+      state.page = 1;
     },
-    setCategory(state, action) {
+    setCategory: (state, action) => {
       state.category = action.payload;
+      state.page = 1;
     },
-    setPriceRange(state, action) {
-      const { min, max } = action.payload;
-      state.minPrice = min;
-      state.maxPrice = max;
+    setPriceRange: (state, action) => {
+      state.priceRange = action.payload;
+      state.page = 1;
     },
-    clearFilters(state) {
+    setPage: (state, action) => {
+      state.page = action.payload;
+    },
+    clearFilters: (state) => {
       state.search = "";
-      state.category = "All";
-      state.minPrice = 0;
-      state.maxPrice = 1000;
-    },
-    filterProducts(state) {
-      let filtered = state.items.filter((p) => {
-        const matchCategory =
-          state.category === "All" || p.category === state.category;
-        const matchSearch = p.title
-          .toLowerCase()
-          .includes(state.search.toLowerCase());
-        const matchPrice = p.price >= state.minPrice && p.price <= state.maxPrice;
-        return matchCategory && matchSearch && matchPrice;
-      });
-      state.filtered = filtered;
+      state.category = "all";
+      state.page = 1;
     },
   },
   extraReducers: (builder) => {
@@ -56,15 +51,51 @@ const productSlice = createSlice({
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.status = "succeeded";
         state.items = action.payload;
-        state.filtered = action.payload;
-        state.categories = ["All", ...new Set(action.payload.map((p) => p.category))];
+        const maxPrice = Math.ceil(Math.max(...state.items.map((p) => p.price)));
+        state.priceRange = [0, maxPrice];
       })
-      .addCase(fetchProducts.rejected, (state) => {
+      .addCase(fetchProducts.rejected, (state, action) => {
         state.status = "failed";
+        state.error = action.error.message;
       });
   },
 });
 
-export const { setSearch, setCategory, setPriceRange, clearFilters, filterProducts } =
-  productSlice.actions;
+export const {
+  setSearch,
+  setCategory,
+  setPriceRange,
+  setPage,
+  clearFilters,
+} = productSlice.actions;
+
+export const selectCategories = createSelector(
+  [(state) => state.products.items],
+  (items) => ["all", ...new Set(items.map((p) => p.category))]
+);
+
+export const selectFiltered = createSelector(
+  [(state) => state.products],
+  ({ items, search, category, priceRange }) => {
+    const [min, max] = priceRange;
+    return items.filter((p) => {
+      const inCategory = category === "all" || p.category === category;
+      const inPrice = p.price >= min && p.price <= max;
+      const inSearch = p.title.toLowerCase().includes(search.toLowerCase());
+      return inCategory && inPrice && inSearch;
+    });
+  }
+);
+
+export const selectPaged = createSelector(
+  [selectFiltered, (state) => state.products.page, (state) => state.products.pageSize],
+  (filtered, page, pageSize) => {
+    const start = (page - 1) * pageSize;
+    return {
+      total: filtered.length,
+      items: filtered.slice(start, start + pageSize),
+    };
+  }
+);
+
 export default productSlice.reducer;
