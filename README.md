@@ -1,0 +1,1 @@
+A fast and interactive web application that helps users explore products with rich details, smooth navigation, and a clean UI. The app fetches live data from the Fake Store API and displays products with features like category-based filtering, search, and individual product details.
